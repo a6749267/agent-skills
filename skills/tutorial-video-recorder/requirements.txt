@@ -1,0 +1,36 @@
+# real-app-tutorial-video 依赖清单
+#
+# 安装:
+#   pip install -r requirements.txt
+#   playwright install chromium
+#
+# 系统依赖(macOS):
+#   brew install ffmpeg          # 必需: 合成/黑场定位/OCR 抽帧/响度
+#   brew install postgresql@16   # 仅当需要灌数据库业务数据
+#
+# Python 包说明:
+#   playwright                 真录屏(record_video) + API 拦截(route)
+#   pyobjc-framework-Vision    macOS 原生 OCR —— **验收必须用它, 不要用模型做 OCR**
+#   pyobjc-framework-Quartz   Vision 的图像加载依赖
+#   Pillow                     黑场像素占比检测 / 边缘密度离群检测
+#   numpy                      数值运算
+#   psycopg2-binary            灌数据库业务数据(可选)
+#
+# 外部服务:
+#   TTS: MiniMax api.minimaxi.com/v1/t2a_v2
+#        env: MINIMAX_CN_API_KEY
+#        注意: 返回的 data.audio 是 **hex 字符串**, 不是 base64。
+playwright>=1.40
+pyobjc-framework-Vision>=10.0
+pyobjc-framework-Quartz>=10.0
+Pillow>=10.0
+numpy>=1.24
+psycopg2-binary>=2.9
+
+# 🚨 ASR 强制对齐必需 (asr_align.py) —— 字幕时间轴的唯一正确来源
+#    faster-whisper + ctranslate2: CPU int8 跑 178s 中文音频约 30 秒
+#    ⚠ 模型首次运行会从 HuggingFace 下载 (small ≈ 460MB)
+#      网络不通时用国内镜像: export HF_ENDPOINT=https://hf-mirror.com
+#    ⚠ 卸载/升级 ctranslate2 可能连带破坏 torch, 建议装在独立 venv
+faster-whisper>=1.0
+ctranslate2>=4.0

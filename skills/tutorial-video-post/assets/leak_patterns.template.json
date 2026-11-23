@@ -1,0 +1,13 @@
+{
+  "_about": "私有脱敏词表模板 —— 复制成你自己的再填。",
+  "_usage": "python scripts/scan_leak.py --patterns my_leak_patterns.json <物料>",
+
+  "block": [
+    ["我的私有项目名", "私有项目名"],
+    ["\\bMY_INTERNAL_CODE\\b", "内部代号"]
+  ],
+
+  "warn": [
+    ["某个容易误伤的词", "自定义提示"]
+  ]
+}

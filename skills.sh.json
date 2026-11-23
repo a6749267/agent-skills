@@ -1,0 +1,12 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "groupings": [
+    {
+      "title": "Video Production",
+      "skills": [
+        "tutorial-video-recorder",
+        "tutorial-video-post"
+      ]
+    }
+  ]
+}

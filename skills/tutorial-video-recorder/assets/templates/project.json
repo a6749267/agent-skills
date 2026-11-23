@@ -1,0 +1,189 @@
+{
+  "_comment": "tutorial-video-recorder 项目配置。复制到项目根目录改。",
+
+  "app": {
+    "base_url": "https://your-app.example.com",
+    "login_username": "demo_video_bot",
+    "login_password": "CHANGE_ME",
+    "login_mode_button": "演示模式",
+    "login_path": "/login",
+    "user_id": "",
+    "_note_userid": "必须是真实 user_id(不是全零UUID), 否则业务接口全401 → 前端跳登录页"
+  },
+
+  "domain": "generic",
+  "_note_domain": "🚨 领域配置(assets/domains/<name>.json)—— 告诉合成引擎「你这个 app 的真实数据长什么样」。先复制一份改成你自己的。",
+
+  "segments": [
+    {"title": "开场",   "module": "工作台", "route": "/dashboard",  "action": "scroll:0",   "text": "旁白文案……"},
+    {"title": "第二屏", "module": "数据",   "route": "/data",      "action": "hold",       "text": "旁白文案……"}
+  ],
+  "_note_segments": "每段 = 一个模块的一次停留。action: scroll:N 滚动到 N 像素, hold 静止。录制时长由旁白长度决定, 自动算。",
+
+  "business_paths": [
+    "/api/account",
+    "/api/records",
+    "/api/orders",
+    "/api/list",
+    "/api/ledger",
+    "/api/users/me",
+    "/api/auth/me"
+  ],
+  "_note_business_paths": "🚨 业务接口路径 —— 这些会被拦截层放行后做字段级清洗。支持通配(如 /api/*/orders)。不知道就先跑 scripts/interceptor.py 看请求日志。",
+
+  "storage_keys_block": ["swr:", "app_active_record"],
+  "_note_storage_keys_block": "🚨 前端缓存键 —— 录制前要屏蔽, 否则会命中上一轮的旧数据。键名因 app 而异, 从浏览器 DevTools 看。",
+
+  "video": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 25,
+    "crf": 20,
+    "preset": "medium",
+    "loudnorm": "I=-16:TP=-1.5:LRA=11"
+  },
+
+  "subtitle": {
+    "enabled": true,
+    "font_size": 44,
+    "margin_v": 60,
+    "max_chars": 20,
+    "_note": "margin_v = 距底部像素(1080高时 60~90 是安全区, 平台UI会遮边). max_chars = 每行最多几个汉字."
+  },
+
+  "visual": {
+    "title_card": {
+      "enabled": true,
+      "duration": 1.9,
+      "fade": 0.3,
+      "title_size": 120,
+      "_note": "每段前插一张静音章节卡(模糊底+超大标题+荧光色关键词). duration 太长会拖节奏, 1.5~2.2s 合适."
+    },
+    "push": {
+      "enabled": true,
+      "zoom": 1.06,
+      "dx": 18,
+      "dy": 10,
+      "period": 9.0,
+      "_note": "缓慢推镜, 每帧都在动 → 死画面归零. zoom 太大(>1.15)会让边缘内容被裁 + 顶栏小字读不出来."
+    },
+    "highlight": {
+      "stroke": 4,
+      "pad": 9,
+      "_note": "高亮框描边粗细/外扩像素. 框要贴着目标, 别太空."
+    },
+    "_note_visual": "视觉层是**节奏与画面质量**的执行者. 录屏天生是死画面(界面静止30秒不动一像素) → 观众划走. 三个参考视频的共通解法: 大标题压屏 + 高亮框 + 推镜. 配好后用 scripts/pace.py 体检."
+  },
+
+  "script_path": "script.json",
+  "_note_script_path": "旁白文案路径, 字幕烧录时读它算时间轴.",
+
+  "align_path": "align.json",
+  "_note_align_path": "🚨 ASR 强制对齐轴(可选但强烈建议). 用 scripts/asr_align.py 生成: 时间取自 ASR(真实语音), 文字取自 script_path 原文. 有了它字幕才跟得上人声 —— 没有它会退回按字数摊时间(实测每段偏 0.3~1.5s). 生成命令见 SKILL.md 字幕章节.",
+
+  "endcards": {
+    "intro": {
+      "enabled": true,
+      "title": "在这里写片头主标题",
+      "sub": "副标题",
+      "badge": "栏目名",
+      "duration": 4.2,
+      "_note": "片头(纯图形开场). duration 3.5~5s 合适. title 4~8 个字, 超大粗衬线, 是全片第一视觉焦点."
+    },
+    "outro": {
+      "enabled": true,
+      "points": ["要点一:说明", "要点二:说明", "要点三:说明"],
+      "next": "下期预告内容",
+      "duration": 4.6,
+      "_note": "片尾(收尾卡片). points 建议 3 条, 每条 12~20 字, 带编号. next 是下期预告."
+    },
+    "_note_endcards": "片头片尾由 scripts/endcard.py 生成, compose 自动调用. 配色与标题卡同源(青 #00e5ff / 玫红 #ff2d55), 别做成另一套风格. 装饰元素不要比正文更亮更大, 否则抢主标题."
+  },
+
+  "music": {
+    "path": "",
+    "gain_db": -13.0,
+    "start_offset": 8.0,
+    "_note_path": "配乐文件路径(mp3/wav). 留空 = 不加配乐. 免费可商用曲库见 references/pacing-and-visual-spec.md 选曲章节.",
+    "_note_gain": "配乐相对原曲的增益(dB). 教程视频配乐只做垫底, -13 左右合适(原曲 -11 LUFS → 配乐约 -24 LUFS, 闪避后更低, 人声仍主导).",
+    "_note_offset": "🚨 配乐起始偏移(秒). 很多曲目开头是静音淡入(实测某曲 0~6s 是 -90dB) → 不设偏移则片头完全没声音. 从响亮段开始."
+  },
+
+  "synthetic": {
+    "code_prefixes": ["QA", "QB", "QC", "QD", "QE", "QF", "QG", "QH"],
+    "code_year": 27,
+    "code_months": [1, 5, 10],
+    "name_template": "合成对象{LETTER}",
+    "_note": "🚨 合成侧参数(覆盖领域配置里的同名项). 前缀绝不能撞真实前缀(见 references/pitfalls.md §5)。年份固定两位, 序号 01-12。"
+  },
+
+  "paths": {
+    "work_dir": "./work",
+    "raw_dir": "raw",
+    "audio_dir": "audio",
+    "out_dir": "out"
+  },
+
+  "tts": {
+    "provider": "minimax",
+    "model": "speech-02-hd",
+    "voice_id": "Chinese (Mandarin)_Warm_Girl",
+    "speed": 1.0,
+    "sample_rate": 32000,
+    "bitrate": 32000,
+    "_note_env": "MINIMAX_CN_API_KEY"
+  },
+
+  "db": {
+    "enabled": false,
+    "dsn": "host=127.0.0.1 port=5433 dbname=yourapp user=postgres",
+    "schema": {
+      "account_table": "<账户表>",
+      "record_table":  "<明细表>",
+      "order_table":   "<订单表>",
+      "list_table":    "<清单表>",
+      "ledger_table":  "<流水表>",
+      "fields": {
+        "account_mode_field": "trading_mode",
+        "account_mode_value": "virtual",
+        "record_cols": ["symbol", "direction", "quantity", "avg_price"],
+        "order_cols":  ["symbol", "side", "quantity", "price"],
+        "list_cols":   ["symbol", "name"],
+        "ledger_cols": ["flow_type", "amount", "memo"]
+      }
+    },
+    "demo": {
+      "records": [
+        {"symbol": "qa2701", "direction": "long",  "quantity": 2, "avg_price": 3180.00},
+        {"symbol": "qc2701", "direction": "short", "quantity": 1, "avg_price": 5420.00},
+        {"symbol": "qe2701", "direction": "long",  "quantity": 3, "avg_price": 4080.00}
+      ],
+      "orders": [
+        {"symbol": "qa2701", "side": "buy",  "quantity": 2, "price": 3180.00, "status": "filled"},
+        {"symbol": "qc2701", "side": "sell", "quantity": 1, "price": 5420.00, "status": "filled"},
+        {"symbol": "qe2701", "side": "buy",  "quantity": 3, "price": 4080.00, "status": "filled"}
+      ],
+      "listing": [
+        {"symbol": "qa2701", "name": "合成对象A01"},
+        {"symbol": "qb2701", "name": "合成对象B01"},
+        {"symbol": "qc2701", "name": "合成对象C01"}
+      ],
+      "ledgers": [
+        {"flow_type": "open",   "amount": 100000.0, "memo": "建仓结算"},
+        {"flow_type": "close",  "amount": 5000.0,   "memo": "平仓结算"},
+        {"flow_type": "fee",    "amount": -120.5,   "memo": "手续费"}
+      ]
+    },
+    "_note": "只有需要「让空账号看起来像有人用过」才开。见 references/pitfalls.md §18/§26。",
+    "_note_schema": "表名不知道? 先跑 python scripts/seed_db.py --config project.json --schema-only, 它会列出库里所有表和列。",
+    "_note_demo": "🚨 演示数据全部在这里(通用层不含任何业务假设)。字段名对齐 db.schema.fields.*。amount/memo 等自由文本字段会被拦截层清洗。"
+  },
+
+  "verify": {
+    "ocr_fps": 2,
+    "min_chars_per_frame": 20,
+    "amplify_scale_h": 2160,
+    "amplify_scale_w": 3840,
+    "_note": "amplify_* 用于把成片帧放大后再读数字 —— 缩略图读数会错(见 pitfalls §40)"
+  }
+}

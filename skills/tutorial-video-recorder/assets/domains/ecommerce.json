@@ -1,0 +1,30 @@
+{
+  "_about": "领域配置示例 —— 电商订单后台。",
+  "_usage": "这是「一个领域长什么样」的具体示例。照着它写自己领域的配置。",
+
+  "display_name": "电商订单",
+  "description": "订单/商品/客户后台。示例领域，用来说明配置怎么填。",
+
+  "real_code_prefixes": ["sku", "ord", "cus"],
+  "real_display_names": ["示例商品甲", "示例商品乙", "示例客户丙"],
+
+  "org_map": {
+    "示例仓库A": "合成仓库A",
+    "示例仓库B": "合成仓库B"
+  },
+
+  "synthetic": {
+    "code_prefixes": ["QA", "QB", "QC", "QD", "QE", "QF", "QG", "QH"],
+    "code_year": 27,
+    "code_months": [1, 5, 10],
+    "name_template": "合成对象{LETTER}"
+  },
+
+  "id_shape": {
+    "pattern": "^[0-9]{4}$",
+    "prefix_len": 2,
+    "year_digit": "2",
+    "seq_min": 1,
+    "seq_max": 12
+  }
+}

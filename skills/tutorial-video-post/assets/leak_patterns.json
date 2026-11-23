@@ -1,0 +1,19 @@
+{
+  "_about": "私有脱敏词表 —— 把你不想公开的标识加进来。",
+  "_usage": "格式: {\"block\": [[正则, 类别]], \"warn\": [[正则, 类别]]}",
+  "_how": [
+    "1. 复制成你自己的文件(如 my_leak_patterns.json), 别直接改这份默认的",
+    "2. 用 --patterns my_leak_patterns.json 指定",
+    "3. 或直接改这份 assets/leak_patterns.json(默认路径)",
+    "4. 每条 pattern 是正则字符串, 命中即报"
+  ],
+  "_examples": [
+    "私有项目名: [\"my-secret-project\", \"私有项目\"]",
+    "内部代号:   [\"\\\\bINTERNAL_CODE\\\\b\", \"内部代号\"]",
+    "自己的域名: [\"example\\\\.mycorp\\\\.com\", \"自有域名\"]"
+  ],
+  "_note": "内置的通用规则(本机路径/真密钥/凭据赋值/业绩数字形状)已经够用, 这里是补充。",
+
+  "block": [],
+  "warn": []
+}

@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 工作产物
+work/
+out/
+raw/
+*.mp4
+*.webm
+*.wav
+*.mp3
+*.jsonl
+
+# 私有配置(不要提交你自己的词表/凭据)
+leak_patterns.local.json
+.env
+project.local.json
+
+# 编辑器
+.DS_Store
+.idea/
+.vscode/

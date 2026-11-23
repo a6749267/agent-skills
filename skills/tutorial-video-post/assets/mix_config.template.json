@@ -1,0 +1,57 @@
+{
+  "_说明": "mix_config.json 模板 —— 传给 mix_bgm.py --config 覆盖默认参数。",
+  "_SRC来源": "用 select_segments.py --json 生成后, 把 intro/body/outro 的 cut 值抄到这里。",
+  "_单位": "src 的 cut 是曲子里的绝对秒数; gain 是 dB; duck threshold 是线性幅度不是 dB",
+
+  "src": {
+    "intro": 25.625,
+    "body": 14.0,
+    "outro": 196.0
+  },
+
+  "gain": {
+    "intro": -8.5,
+    "body": -20.0,
+    "outro": -8.5
+  },
+
+  "duck": {
+    "body":  {"threshold": 0.015, "ratio": 12, "attack": 4, "release": 200},
+    "intro": {"threshold": 0.02,  "ratio": 14, "attack": 3, "release": 160},
+    "outro": {"threshold": 0.02,  "ratio": 14, "attack": 3, "release": 160}
+  },
+
+  "_duck_gate说明": "片头豁免闪避的秒数(只门控触发信号, 不门控声音); null = 不豁免",
+  "duck_gate": {
+    "intro": 0.8,
+    "body": null,
+    "outro": null
+  },
+  "duck_gate_ramp": 0.15,
+
+  "_gate_fall说明": "豁免期音乐的衰减: t=0 满能量 → fall 秒内落到 gate_fall_db → 恒定垫底",
+  "gate_fall": {
+    "intro": 0.30,
+    "body": null,
+    "outro": null
+  },
+  "gate_fall_db": -13.0,
+
+  "_impact说明": "sil=蓄势秒数; boom=冲击陡升秒数; ramp=防 click 最小斜坡(不是淡入)",
+  "impact": {
+    "intro": {"sil": 0.0, "boom": 0.0,  "ramp": 0.03},
+    "body":  {"sil": 0.0, "boom": 0.0,  "ramp": 0.8},
+    "outro": {"sil": 0.6, "boom": 0.30, "ramp": 0.5}
+  },
+
+  "_out_fade说明": "每段末尾的淡出秒数; 0 = 不淡出",
+  "out_fade": {
+    "intro": 0.35,
+    "body": 1.5,
+    "outro": 1.6
+  },
+  "outro_lift": true,
+
+  "voice_loudnorm": "loudnorm=I=-18:TP=-3:LRA=11",
+  "bg_weight": 0.34
+}

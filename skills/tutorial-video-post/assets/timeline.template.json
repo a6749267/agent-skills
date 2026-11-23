@@ -1,0 +1,17 @@
+{
+  "_说明": "timeline.json 模板 —— 视频时间轴。mix_bgm.py 和 subtitle_post.py 都靠它定位段落。",
+  "_kind取值": "title_card / intro / segment / outro",
+  "_生成方法": "从成片的分段信息推导; start/end 单位秒; total 必须等于成片时长",
+
+  "total": 253.32,
+  "tracks": [
+    {"kind": "intro",    "seg": 0, "start": 0.0,   "end": 24.36},
+    {"kind": "segment",  "seg": 1, "start": 24.36, "end": 54.92},
+    {"kind": "segment",  "seg": 2, "start": 54.92, "end": 90.48},
+    {"kind": "segment",  "seg": 3, "start": 90.48, "end": 117.68},
+    {"kind": "segment",  "seg": 4, "start": 117.68,"end": 156.92},
+    {"kind": "segment",  "seg": 5, "start": 156.92,"end": 203.88},
+    {"kind": "segment",  "seg": 6, "start": 203.88,"end": 230.72},
+    {"kind": "outro",    "seg": 7, "start": 230.72,"end": 253.32}
+  ]
+}

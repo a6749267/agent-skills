@@ -1,0 +1,35 @@
+{
+  "_about": "领域配置 —— 告诉合成引擎「这个 app 的真实数据长什么样」。",
+  "_usage": "复制一份改成你自己的，或在 project.json 里用 'domain': '<文件名>' 引用。",
+  "_rule": "判定的权威永远是「该 app 真实存在什么」，不是任何通用词表。",
+
+  "display_name": "通用",
+  "description": "不含任何领域词的中性基线。只有当你不知道该填什么时用这个。",
+
+  "real_code_prefixes": [],
+  "real_display_names": [],
+
+  "org_map": {},
+
+  "_prefixes_note": "真实标识符前缀（如交易所代码、SKU 前缀、租户代码）。留空 = 你的 app 没有短前缀型标识符。",
+  "_names_note": "真实业务对象名（如商品名、客户名、标的物名）。会被整体替换成合成名。",
+  "_org_note": "真实机构/组织名 → 合成名。键是原文，值是替换结果。",
+
+  "synthetic": {
+    "code_prefixes": ["QA", "QB", "QC", "QD", "QE", "QF", "QG", "QH"],
+    "code_year": 27,
+    "code_months": [1, 5, 10],
+    "name_template": "合成对象{LETTER}"
+  },
+
+  "id_shape": {
+    "_about": "标识符形状守卫 —— 决定哪些 token 算「真实标识符」需要替换。",
+    "_default": "4 位数 = 2 位年 + 01~12 序号（如 2701）。这是最常见的「前缀+年月」编号体系。",
+    "_adjust": "你的 app 用别的编号体系（纯数字流水号、UUID、全局递增 id）→ 改这里。",
+    "pattern": "^[0-9]{4}$",
+    "prefix_len": 2,
+    "year_digit": "2",
+    "seq_min": 1,
+    "seq_max": 12
+  }
+}

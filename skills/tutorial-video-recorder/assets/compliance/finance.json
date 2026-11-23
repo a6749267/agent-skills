@@ -1,0 +1,27 @@
+{
+  "_about": "金融领域合规词表 —— 可选预设。",
+  "_usage": "python compliance_scan.py <路径> --domain finance",
+  "_note": "内容涉及证券/期货等需资质审核的领域时用这份。平台对不同领域的口径不同, 按你的平台调整。",
+
+  "strong_cn": [
+    "期货", "主力合约", "实盘", "荐股", "带单", "选股", "股票", "炒股",
+    "买卖点", "开仓", "平仓", "止盈", "止损",
+    "收益率", "年化", "胜率", "回撤", "夏普", "净值曲线", "盈亏", "盈利", "亏损",
+    "行情", "K线", "成交量", "持仓量", "保证金", "杠杆", "融资融券",
+    "换月", "交割", "涨跌停", "手续费", "分红", "市值"
+  ],
+
+  "strong_en": [
+    "contract", "contracts", "open_interest", "turnover", "margin", "leverage",
+    "slippage", "mult", "pnl", "equity_curve", "portfolio", "position_size",
+    "ticker", "dividend", "backtest", "live_trading",
+    "expiry", "notional"
+  ],
+
+  "weak_cn": [
+    "回测", "撮合", "滑点", "费率", "标的", "序列", "策略", "信号", "指标",
+    "成本", "价格", "成交"
+  ],
+
+  "weak_en": ["signal_fn", "params", "fee", "bar", "bars", "cash", "price"]
+}
