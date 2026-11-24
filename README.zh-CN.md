@@ -103,6 +103,20 @@ Windsurf / Gemini CLI / OpenClaw / Hermes 以及任何能读 skill 目录的框�
 npx skills add a6749267/agent-skills
 ```
 
+<details>
+<summary>网络受限 / 被墙？改用 SSH 地址安装</summary>
+
+`npx skills add` 默认走 HTTPS clone。如果你的网络封了 `github.com:443`，用 SSH 地址即可 ——
+`skills` CLI 接受任意 git URL：
+
+```bash
+npx skills add git@github.com:a6749267/agent-skills.git
+```
+
+前提是你的 GitHub 账号已登记 SSH key
+（[Settings → SSH keys](https://github.com/settings/keys)）。skill 内容完全一样，就是同一个仓库。
+</details>
+
 或者直接复制 skill 目录：
 
 ```bash

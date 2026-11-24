@@ -1,16 +1,24 @@
 ---
 name: tutorial-video-recorder
 description: >
-  把「真应用 + 合成数据」录成教程视频并交付 —— 通用管线，adapter 接任意 web app。
-  触发语：「录个教程视频」「把应用录成视频」「做一期教学视频」「录屏成片」
+  Record a real, running web app as a tutorial video where every on-screen value is synthetic.
+  Framework-agnostic pipeline: an adapter layer binds it to any web app, so the same recorder,
+  synthetic-data generator, interceptor, composer and verifier work on any stack.
+  Triggers (EN): "record a tutorial video", "screen-record my app", "make a product demo video",
+  "scrub sensitive data from a recording", "record the real UI", "add an intro/outro".
+  Triggers (中文):「录个教程视频」「把应用录成视频」「做一期教学视频」「录屏成片」
   「真录屏」「视频脱敏」「把界面录下来讲」「做教程视频」「加字幕」
   「录出来像首页」「怎么让录屏里界面不是空的」「加片头片尾」「加配乐」「字幕对不上」
   「这个视频是总体介绍」「接下来要做的视频有规划吗」「再拍几期」「选题怎么排」「视频系列规划」
   「把标题和简介写出来」「发布时被卡审核」「流量受影响怎么办」「能发吗」
-  核心资产：scripts/ 里的 recorder / synthetic / interceptor / compose / subtitle / asr_align / visual / endcard / verify / tts / pace / mix_dynamic_music，
-  全部可参数化运行。换 app 只需改 assets/templates/project.json + assets/domains/<你的领域>.json + scripts/adapters/<你的app>/adapter.py。
-  配套踩坑手册（references/pitfalls.md，按症状分 A-H 八组）、adapter 接入指南（references/adapter-guide.md）、
-  节奏与画面规范（references/pacing-and-visual-spec.md）、字幕强制对齐配方（references/subtitle-pipeline.md）。
+  Guarantees: real UI, zero real data, numbers that reconcile (header total = sum of rows),
+  1920x1080 landscape only, burned-in subtitles, and a dead-frame check so the recording never freezes.
+  Core assets: scripts/ recorder / synthetic / interceptor / compose / subtitle / asr_align / visual /
+  endcard / verify / tts / pace / mix_dynamic_music, all parameterised.
+  Porting to a new app only means editing assets/templates/project.json + assets/domains/<domain>.json
+  + scripts/adapters/<your-app>/adapter.py.
+  Bundled references: references/pitfalls.md (40+ real failure modes, grouped A-H by symptom),
+  references/adapter-guide.md, references/pacing-and-visual-spec.md, references/subtitle-pipeline.md.
 ---
 
 # 录屏教学视频管线（录制端）

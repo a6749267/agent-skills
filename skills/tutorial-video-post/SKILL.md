@@ -1,18 +1,22 @@
 ---
 name: tutorial-video-post
 description: >
-  视频后期制作管线 —— 字幕烧录 + BGM 下载/识别/选段/混音 + 成片验收 + 交付脱敏。
-  触发语：「做视频后期」「加字幕」「配BGM」「配乐」「配乐太闷」「片头不够激昂」
+  Post-production pipeline for screen-recorded tutorial videos: subtitle burn-in, BGM download /
+  recognition / segment selection / ducking mix, final-cut audio verification and leak scrubbing
+  before delivery.
+  Triggers (EN): "add subtitles to my video", "post-process a recording", "pick background music",
+  "music is too muffled", "voice is drowned out by the music", "final QA before publishing",
+  "subtitle timing is off".
+  Triggers (中文):「做视频后期」「加字幕」「配BGM」「配乐」「配乐太闷」「片头不够激昂」
   「片头一打开就是高潮」「下载音乐」「选曲」「选什么曲子」「BGM 盖住人声」
   「人声听不清」「音乐识别」「音频验收」「成片脱敏」「发布前检查」
   「做视频的完整流程」「视频后期打包」「字幕烧录」「字幕对不上」
-  核心资产: scripts/ 里的 fetch_music(下载) / music_identify(识别) /
-  select_segments(选段) / mix_bgm(混音) / subtitle_post(字幕) /
-  verify_audio(验收) / scan_leak(脱敏) / check_tofu(豆腐块AST扫描)。
-  配套踩坑手册 references/pitfalls.md（按症状分 A–G 七组：选曲/混音/选段/字幕/脱敏/画面绘制/脚本工程）、
-  配乐方法论 references/bgm-methodology.md、
-  字幕配方 references/subtitle-recipe.md、
-  素材获取与自检 references/sourcing-and-selfcheck.md。
+  Core assets: scripts/ fetch_music (download) / music_identify (match) / select_segments (pick) /
+  mix_bgm (mix) / subtitle_post (burn) / verify_audio (QA) / scan_leak (scrub) /
+  check_tofu (CJK glyph-render check).
+  Bundled references: references/pitfalls.md (real failure modes grouped A-G by symptom:
+  music selection / mixing / segment picking / subtitles / scrubbing / rendering / script engineering),
+  references/bgm-methodology.md, references/subtitle-recipe.md, references/sourcing-and-selfcheck.md.
 ---
 
 # 视频后期制作管线

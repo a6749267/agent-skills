@@ -108,6 +108,21 @@ chain; nothing hardcodes one framework's layout.
 npx skills add a6749267/agent-skills
 ```
 
+<details>
+<summary>Behind a firewall / restricted network? Use the SSH URL instead</summary>
+
+`npx skills add` clones over HTTPS. If your network blocks `github.com:443`, use the SSH
+remote — the `skills` CLI accepts any git URL:
+
+```bash
+npx skills add git@github.com:a6749267/agent-skills.git
+```
+
+You need an SSH key registered on your GitHub account
+([Settings → SSH keys](https://github.com/settings/keys)). Nothing about the skill
+changes — it is the same repository.
+</details>
+
 Or copy a skill directory into your agent's skills folder:
 
 ```bash
