@@ -42,6 +42,9 @@ Most tools solve one of these:
 **This repo is the missing third thing: record *and* de-identify, in the same pass,
 with the guarantee that the numbers on screen are still self-consistent.**
 
+> **Found this useful?** ⭐ Star the repo — it takes one click and it's the only way other
+> people find it. New skills land in the same repo over time.
+
 ---
 
 ## Why this is hard
