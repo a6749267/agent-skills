@@ -1,10 +1,23 @@
-# 录屏教学视频管线
+# Agent 技能集
+
+一套**框架无关、可安装可移植**的 agent skill。每个 skill 一个目录、一份 `SKILL.md`、一个自检入口。
+
+**当前收录**
+
+| skill | 干什么 | 交付 |
+|---|---|---|
+| [`tutorial-video-recorder`](skills/tutorial-video-recorder/) | 录屏 → 合成 → 无声底版 | `silent.mp4` |
+| [`tutorial-video-post`](skills/tutorial-video-post/) | 字幕 → 配乐 → 验收 → 脱敏 | `final.mp4` |
+
+**框架无关**：所有 skill 都是标准 `SKILL.md` 目录结构，任何支持 skill 目录的 agent 框架都能直接用（Claude Code / Cursor / OpenClaw / Hermes / …），不绑定任何一家。运行时路径靠环境变量 + 优先级链解析，不硬编码任何框架的目录。
+
+---
+
+## 收录的第一个 skill：录屏教学视频管线
 
 把一个**真实运行的 web 应用**录成教程视频，同时保证画面里没有一个真实数据。
 
 **通用管线**：换 app 只需改一份配置 + 写一个 adapter，通用层一个字都不用动。
-
-**框架无关**：两个 skill 都是标准 `SKILL.md` 目录结构，任何支持 skill 目录的 agent 框架都能直接用（Claude Code / Cursor / OpenClaw / Hermes / …），不绑定任何一家。
 
 ```
 真实 web app
@@ -20,7 +33,7 @@ final.mp4（可直接发）
 
 ---
 
-## 两个 skill
+## 两个 skill 的分工
 
 | skill | 干什么 | 交付 |
 |---|---|---|
