@@ -72,7 +72,7 @@ def check_whisper(mix, silent, points, min_ratio=0.85):
     try:
         from faster_whisper import WhisperModel
     except ImportError:
-        print("  ⚠️ 没装 faster_whisper, 跳过(用 hermes 自带 venv 的 python)")
+        print("  ⚠️ 没装 faster_whisper, 跳过(用装有该依赖的解释器)")
         return None
     import warnings
     warnings.filterwarnings("ignore")

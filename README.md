@@ -1,8 +1,10 @@
-# Hermes 录屏教学视频管线
+# 录屏教学视频管线
 
 把一个**真实运行的 web 应用**录成教程视频，同时保证画面里没有一个真实数据。
 
 **通用管线**：换 app 只需改一份配置 + 写一个 adapter，通用层一个字都不用动。
+
+**框架无关**：两个 skill 都是标准 `SKILL.md` 目录结构，任何支持 skill 目录的 agent 框架都能直接用（Claude Code / Cursor / OpenClaw / Hermes / …），不绑定任何一家。
 
 ```
 真实 web app
@@ -39,8 +41,8 @@ final.mp4（可直接发）
 |---|---|
 | 验收跑了另一个脚本，不是成片 | 用户看完直接判「你那张只是首页介绍页面，没登录进去」 |
 | 新账号天然是空的 | 10 个模块 6 个显示「暂无」，像空壳 |
-| 后端把汇总字段硬编码 0 | 同一画面顶栏 +0.00、明细 −1424.00，一眼看穿 |
-| 数字靠模型读 | 模型把 −1424.00 读成 −1624.00，还自己算出「总数不一致」去质疑对的数据 |
+| 后端把汇总字段硬编码 0 | 同一画面顶栏 +0.00、明细 −1200.00，一眼看穿 |
+| 数字靠模型读 | 模型把 −1200.00 读成 −1400.00，还自己算出「总数不一致」去质疑对的数据 |
 
 完整清单见 [`skills/tutorial-video-recorder/references/pitfalls.md`](skills/tutorial-video-recorder/references/pitfalls.md)（分 A–H 八组，按症状索引）。
 
@@ -50,14 +52,32 @@ final.mp4（可直接发）
 
 ### 1. 装
 
+**通用方式**（任何 agent 框架）：把 `skills/` 下的目录复制到你框架的 skill 目录，或直接用脚本（不装 skill 也能跑）。
+
 ```bash
-hermes skills tap add <owner>/<repo>     # 装 repo 里所有 skill
-# 或
-hermes skills install <url>/skills/tutorial-video-recorder/SKILL.md
+# 复制到你的框架的 skill 目录
+cp -r skills/tutorial-video-recorder  <your-agent-skills-dir>/tutorial-video-recorder
+cp -r skills/tutorial-video-post      <your-agent-skills-dir>/tutorial-video-post
 ```
+
+如果你用的框架支持从 git 仓库拉取 skill 目录，直接指到本 repo 即可。
 
 依赖：`ffmpeg` + `playwright`（`pip install playwright && playwright install chromium`）。
 模型识别（AST/CLAP）另需 `torch transformers numpy`。
+
+自检依赖是否齐全：
+
+```bash
+bash skills/tutorial-video-recorder/scripts/install.sh
+```
+
+`install.sh` 跑完依赖检查后会**自动跑一遍管线自检**（13 项）——
+因为这套管线的错误**不会抛异常**，而是变成画面里「顶栏汇总 ≠ 明细之和」
+这种看起来还挺像回事的假数据。肉眼发现不了，观众一眼看穿。
+
+```bash
+python skills/tutorial-video-recorder/scripts/selfcheck.py --verbose
+```
 
 ### 2. 配
 
@@ -169,9 +189,42 @@ app 相关的路径、缓存键、领域词表**全在配置里**：
 - **每段一个独立 context** —— 段首状态干净，不会互相污染
 - **浏览器磁盘缓存会让拦截完全失效** → 加 `--disable-http-cache`
 - **拦截逻辑只能有一份**，录制和验收共用 → `interceptor.py::make_handler()`
-- **数字必须用原生 OCR 读**，不用 vision 读 —— vision 在缩略拼图上会把 −1424.00 读成 −1624.00，然后自己算出「总数不一致」去质疑对的数据
+- **数字必须用原生 OCR 读**，不用 vision 读 —— vision 在缩略拼图上会把 −1200.00 读成 −1400.00，然后自己算出「总数不一致」去质疑对的数据
 - **全片 OCR 盲扫** —— 抽查几帧不能证明「没有泄漏」，泄漏可能在第 7 秒
 - **hex 颜色守卫** —— `#ef4444` 是 CSS 颜色不是编号，不守会把前端配色全改坏
+
+---
+
+## 跨框架适配
+
+两个 skill **不绑定任何 agent 框架**。所有与运行时环境相关的解析都集中在
+`skills/tutorial-video-recorder/scripts/agentenv.py`，靠**优先级链**逐个尝试。
+
+### 你可以设置的环境变量
+
+| 变量 | 作用 | 默认回退 |
+|---|---|---|
+| `TUTORIAL_PYTHON` | 指定跑管线的解释器 | `$PY` → agent home 下的 venv → `python3` |
+| `TUTORIAL_ENV_FILE` | 指定凭据文件 | `$AGENT_HOME/.env` → `~/.env` |
+| `AGENT_HOME` | agent 运行时根目录 | — |
+| `TUTORIAL_SKILL_HOME` | 指定 skill 根目录 | 脚本自身位置上溯两级 |
+| `TUTORIAL_AGENT_HOME` | `AGENT_HOME` 的别名 | — |
+
+### 为什么不用 `Path.home()`
+
+> 🚨 agent 沙箱常把 `$HOME` 劫持成自己的沙箱家目录（形如 `<something>/home`），
+> 真正的家目录和凭据文件在别处。`Path.home()` 会拿到沙箱路径 → 文件不存在 →
+> **静默拿不到 key**，不报错，最难查。
+
+`agentenv.real_home()` 的做法：从 PATH 上的 `python3` 真实路径**反推**家目录，
+再退回 `expanduser("~")`。
+
+### 自己装 skill 时的最小要求
+
+只需要两样：
+
+1. 目录里有 `SKILL.md`（YAML frontmatter，`name` 必须与目录名一致）
+2. `scripts/` 与 `SKILL.md` 同级
 
 ---
 

@@ -136,9 +136,11 @@ class Adapter:
 
         实测: 后端把 total_amount / today_count **硬编码 0**,
         而前端「订单概览」用单价自己算 →
-        同一画面里顶栏 +0.00、明细 −1424.00, 观众一眼看穿。
+        同一画面里顶栏 +0.00、明细 −1200.00, 观众一眼看穿。
 
         修法: 用**同一套数据**重算汇总字段, 不要另算一套价格。
+        🚨 关键: 必须用订单里**自己的** unit_price, 不能用 quote_map 的报价 ——
+        两者不是一回事, 混用会导致「汇总 ≠ 明细之和」, 正好是你要修的病。
         ⚠ 修完必须在浏览器里断言 API before/after 真的变了 —— 见 pitfalls §33。
         """
         if "/api/account" not in url:
@@ -148,10 +150,11 @@ class Adapter:
             total = 0.0
             count = 0
             for o in orders:
-                q = self.quote_map([o["symbol"]]).get(o["symbol"], {})
-                unit = float(q.get("unit_price") or o["unit_price"])
+                unit = float(o["unit_price"])
                 qty = float(o["quantity"])
-                total += unit * qty
+                # 净额语义与 _orders() 完全一致: 卖为正、买为负
+                sign = 1.0 if o.get("side") == "sell" else -1.0
+                total += sign * unit * qty
                 count += int(qty)
             payload["total_amount"] = round(total, 2)
             payload["today_count"] = count
@@ -168,28 +171,35 @@ class Adapter:
         🚨 unit_price 必须和 quotes() 生成的 unit_price **自洽** ——
         否则 fix_summary 算出的金额会完全失真。
         (实测: 历史值抄的是 3180/5420/4080, 而 quotes() 生成的是 4418/5276/3094
-              → 金额算出 +24760/-29557, 比例全错, 而"看起来还是有数字"。)
+              → 金额算出 +24800/-29600, 比例全错, 而"看起来还是有数字"。)
 
-        正确做法: **反解** unit_price, 让金额等于你想要的数。
-        ```
-        last = qm[sym]["unit_price"]
-        unit = last - target/qty      # 卖出
-        unit = last + target/qty      # 买入
-        ```
-        这里取的 target 是 -1424 / +1280.40 / -1509.30, 合计 -1652.90,
-        模拟「顶栏汇总 = 明细之和」的自洽画面。
+        正确做法: **反解** unit_price, 让净额等于你想要的数。
+        净额语义(和 fix_summary 一致):
+            卖出 → +unit_price × quantity  (收入为正)
+            买入 → -unit_price × quantity  (支出为负)
+        所以:
+            unit_price = target / (sign × quantity)
+        其中 sign = +1(卖) / -1(买)。
         """
         qm = self.quote_map()
         spec = [
-            # symbol,      side,    qty, 目标金额
-            ("qa2701", "sell", 2, -1424.00),
-            ("qc2701", "buy",  1,  1280.40),
-            ("qe2701", "sell", 3, -1509.30),
+            # symbol,      side,    qty, 目标净额
+            ("qa2701", "sell", 2, 1200.00),
+            ("qc2701", "buy",  1, -1260.40),
+            ("qe2701", "sell", 3, 1490.30),
         ]
         out = []
         for sym, side, qty, target in spec:
+            sign = 1.0 if side == "sell" else -1.0
             last = float(qm[sym]["unit_price"])
-            unit = last - target / qty if side == "sell" else last + target / qty
+            # 反解: sign × unit × qty == target  →  unit = target / (sign × qty)
+            unit = target / (sign * qty)
+            # 让单价贴近真实报价(否则会出现离谱单价, 画面假)
+            # 只在能保证净额不变的前提下微调数量不允许 —— 数量是固定的,
+            # 所以单价就是 target/(sign*qty)。这里只做取整与保底。
+            unit = round(unit, 2)
+            if unit <= 0:
+                unit = round(last, 2)
             out.append({"symbol": sym, "side": side, "quantity": qty,
-                        "unit_price": round(unit, 2)})
+                        "unit_price": unit})
         return out

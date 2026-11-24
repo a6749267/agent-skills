@@ -1,5 +1,5 @@
 ---
-name: video-post-production
+name: tutorial-video-post
 description: >
   视频后期制作管线 —— 字幕烧录 + BGM 下载/识别/选段/混音 + 成片验收 + 交付脱敏。
   触发语：「做视频后期」「加字幕」「配BGM」「配乐」「配乐太闷」「片头不够激昂」
@@ -121,7 +121,7 @@ $PIP $SKILL/scripts/scan_leak.py final.mp4 --ocr --transcribe
 
 ### 🚨 路径陷阱（必读）
 
-**`~` 在这个环境里展开成 agent 的 home，不是真 home** → `~/.hermes/skills/...` 指向一个**不存在的目录**。  # leak-ok
+**`~` 在 agent 沙箱里展开成沙箱 home，不是真 home** → `~/.<agent-dir>/skills/...` 指向一个**不存在的目录**。
 
 → **调用 skill 里的脚本一律用绝对路径**，别用 `~`。
 → **文档里写绝对路径会被脱敏扫描判 BLOCK** → 对外文档一律用**占位命令**（如 `<本 skill 目录>`）。

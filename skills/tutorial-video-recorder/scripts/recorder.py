@@ -29,29 +29,50 @@ sys.path.insert(0, str(HERE))
 from playwright.sync_api import sync_playwright  # noqa: E402
 
 import synthetic  # noqa: E402
+import agentenv  # noqa: E402
 from interceptor import make_handler  # noqa: E402
 
 
 def find_chromium():
-    """找完整 chromium(带 chrome-mac*/Google Chrome for Testing.app)。"""
+    """找完整 chromium(带 chrome-mac*/Google Chrome for Testing.app)。
+
+    🚨 关键: **必须排除 headless_shell** —— record_video 的 screencast
+    在 headless_shell 上不支持。所以只认目录名以 `chromium-` 开头(不带
+    _headless_shell 后缀)的那些。
+
+    缓存位置随平台/框架而变, 所以**多处都找**:
+      - $PLAYWRIGHT_BROWSERS_PATH
+      - 真实家目录 ~/Library/Caches/ms-playwright (macOS) / ~/.cache/... (Linux)
+      - $HOME (可能是 agent 沙箱 home, 装在那边)
+      - $AGENT_HOME 下的沙箱布局
+    """
     import os
     cands = []
     pb = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
     if pb:
         cands.append(pathlib.Path(pb))
+    rh = pathlib.Path(agentenv.real_home())
     cands += [
-        pathlib.Path.home() / "Library/Caches/ms-playwright",
-        pathlib.Path.home() / ".cache/ms-playwright",
+        rh / "Library/Caches/ms-playwright",
+        rh / ".cache/ms-playwright",
     ]
-    # HERMES_HOME 下的缓存(playwright 装在 hermes home 里时)
-    hh = os.environ.get("HERMES_HOME")
-    if hh:
-        cands.append(pathlib.Path(hh) / "home/Library/Caches/ms-playwright")
-        cands.append(pathlib.Path(hh) / "Library/Caches/ms-playwright")
+    # $HOME 可能是 agent 沙箱 home —— 装在那边也要能找到
+    hijacked = os.environ.get("HOME")
+    if hijacked:
+        cands.append(pathlib.Path(hijacked) / "Library/Caches/ms-playwright")
+        cands.append(pathlib.Path(hijacked) / ".cache/ms-playwright")
+    for base in filter(None, [os.environ.get("AGENT_HOME"), os.environ.get("TUTORIAL_AGENT_HOME")]):
+        cands.append(pathlib.Path(base) / "home/Library/Caches/ms-playwright")
+        cands.append(pathlib.Path(base) / "Library/Caches/ms-playwright")
+    seen = set()
     for base in cands:
-        if not base.exists():
+        if str(base) in seen or not base.exists():
             continue
+        seen.add(str(base))
+        # 只要完整 chromium, 不要 headless_shell
         for d in sorted(base.glob("chromium-*")):
+            if "headless" in d.name:
+                continue
             for exe in d.glob("**/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"):
                 return str(exe)
             for exe in d.glob("**/chrome"):

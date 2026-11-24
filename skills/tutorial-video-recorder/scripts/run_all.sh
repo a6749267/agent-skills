@@ -10,11 +10,22 @@ set -euo pipefail
 CFG="${1:-project.json}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# 选解释器: 优先能 import playwright 的那个(依赖常装在 hermes venv 里)
+# 选解释器: 优先能 import playwright 的那个(依赖常装在别的 venv 里)
 pick_python() {
   local cands=()
+  [ -n "${TUTORIAL_PYTHON:-}" ] && cands+=("$TUTORIAL_PYTHON")
   [ -n "${PY:-}" ] && cands+=("$PY")
-  [ -n "${HERMES_HOME:-}" ] && cands+=("$HERMES_HOME/hermes-agent/venv/bin/python")
+  if [ -n "${AGENT_HOME:-}" ]; then
+    cands+=(
+      "$AGENT_HOME/venv/bin/python"
+      "$AGENT_HOME/hermes-agent/venv/bin/python"
+      "$AGENT_HOME/agent/venv/bin/python"
+      "$AGENT_HOME/.venv/bin/python"
+    )
+    for g in "$AGENT_HOME"/*/venv/bin/python "$AGENT_HOME"/*/.venv/bin/python; do
+      [ -x "$g" ] && cands+=("$g")
+    done
+  fi
   cands+=("python3" "python")
   for c in "${cands[@]}"; do
     if command -v "$c" >/dev/null 2>&1; then

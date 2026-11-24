@@ -38,8 +38,21 @@ DEFAULT_PATTERNS = HERE.parent / "assets" / "leak_patterns.json"
 # ── BLOCK 级(出现即失败) ──
 # ⚠ 这些规则行本身含敏感词 → 扫描自己会命中 → 每行加 `leak-ok` 豁免。
 #    通用规则: 与使用者身份无关的泄漏形态。
+# ── 本机路径形态 ──────────────────────────────────────────────
+# 🚨 为什么要拆成常量而不是写进正则:
+#   规则行自己会被扫描器扫到 → 命中自己的规则 → 自我 BLOCK。
+#   拆开后再拼, 每段都不含完整路径形态 → 从根上避免自命中。
+#   (片段边界都刻意避开斜杠, 所以单看任何一段都匹配不上路径规则)
+_PATH_RE = (
+    r"/Us" r"ers/[a-zA-Z0-9._-]+"        # macOS 用户目录
+    r"|/Vol" r"umes/[A-Za-z0-9._-]+"     # 外接卷
+    r"|/work" r"space/"                  # 容器工作区
+    r"|~/(?!\.env\b)(?!Library/|Applications/)[a-zA-Z0-9._-]+/"
+    r"|/ho" r"me/(?!Library/|Applications/)[a-zA-Z0-9._-]+/"
+)
+
 BLOCK_PATTERNS = [
-    (r"/Users/[a-zA-Z0-9._-]+|/Volumes/[A-Za-z0-9._-]+|/workspace/|/\.hermes|~/\.hermes", "本机路径"),  # leak-ok
+    (_PATH_RE, "本机路径"),  # leak-ok
     (r"sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY", "真密钥"),  # leak-ok
     (r"(?:api[_-]?key|password|passwd|secret|access[_-]?token)\s*[:=]\s*[\"'][^\"'\s]{8,}[\"']", "疑似凭据赋值"),  # leak-ok
     (r"年化\s*[-+]?\d|CAGR\s*[-+]?\d|胜率\s*\d+(\.\d+)?\s*%|最大回撤\s*\d+(\.\d+)?\s*%|夏普\s*\d", "业绩数字"),  # leak-ok
@@ -47,7 +60,7 @@ BLOCK_PATTERNS = [
 
 # ── WARN 级(需人工判断) ──
 WARN_PATTERNS = [
-    (r"Hermes|hermes-agent|OpenClaw|openclaw", "工具栈"),  # leak-ok
+    (r"(?<![A-Za-z0-9])(?:[A-Z][a-zA-Z]*[Ff]ramework|[Cc]odex|[Aa]gent)(?![A-Za-z0-9])", "工具栈"),  # leak-ok
     (r"\b\d{6}\.(?:SZ|SH|sz|sh)\b", "股票代码"),  # leak-ok
     (r"(?<![A-Za-z0-9])(?-i:[A-Z]{1,3}|[a-z]{1,2})(?:[0-9](?:0[1-9]|1[0-2])|[0-9]{2}(?:0[1-9]|1[0-2]))(?![0-9])", "编号代码"),  # leak-ok
     (r"(?:收益?|盈亏|利润|盈利|浮盈|浮亏|总收益)\s*[:：]?\s*[+－-]?\s*\d{1,3}(?:,\d{3})+(?:\.\d+)?", "业绩金额"),  # leak-ok

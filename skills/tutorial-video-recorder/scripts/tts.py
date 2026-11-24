@@ -29,46 +29,31 @@ import sys
 import urllib.error
 import urllib.request
 
+HERE = pathlib.Path(__file__).resolve().parent
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+
+import agentenv  # noqa: E402
+
 MINIMAX_URL = "https://api.minimaxi.com/v1/t2a_v2"
 
 
 def find_env_file():
-    """定位 .env。
+    """定位凭据文件。
 
-    🚨 坑③: **不能用 Path.home()** —— agent 环境把 HOME 劫持成 agent home,
-    真正的 .env 在 $HERMES_HOME/.env。
-    用 Path.home() 会得到 <agent_home>/.env → 不存在 → 静默拿不到 key。
-    依次尝试: $HERMES_ENV → $HERMES_HOME/.env → ~/.env
+    🚨 坑③: **不能用 Path.home()** —— agent 沙箱常把 HOME 劫持成自己的 home,
+    真正的凭据文件在别处(如 $AGENT_HOME/.env)。用 Path.home() 会得到
+    <sandbox_home>/.env → 不存在 → 静默拿不到 key。
+    完整的优先级链见 agentenv.py —— 这里是薄封装, 便于本脚本独立运行。
     """
-    cands = []
-    # 用 .get() 而不是方括号取值 —— 后者缺 key 时会 KeyError 直接崩
-    env_file = os.getenv("HERMES_ENV")
-    if env_file:
-        cands.append(env_file)
-    hh = os.environ.get("HERMES_HOME")
-    if hh:
-        cands.append(str(pathlib.Path(hh) / ".env"))
-    cands.append(str(pathlib.Path.home() / ".env"))
-    for c in cands:
-        if c and pathlib.Path(c).exists():
-            return c
-    return cands[0] if cands else ""
+    return agentenv.find_env_file()
 
 
 def read_env(path=None, name="MINIMAX_CN_API_KEY"):
-    """从 .env 取值。逐行 split, 不用正则 —— 见模块 docstring 坑②。"""
-    path = path or find_env_file()
-    p = pathlib.Path(path)
-    if not p.exists():
-        return os.getenv(name)
-    for line in p.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        k, v = line.split("=", 1)
-        if k.strip() == name:
-            return v.strip().strip('"').strip("'")
-    return os.getenv(name)
+    """从凭据文件取值。逐行 split, 不用正则 —— 见模块 docstring 坑②。"""
+    if path:
+        return agentenv.read_env_value(name, path)
+    return agentenv.read_env_value(name)
 
 
 def synth_one(text, key, model="speech-02-hd", voice_id="Chinese (Mandarin)_Warm_Girl",
@@ -115,7 +100,7 @@ def main():
 
     key = read_env()
     if not key:
-        sys.exit("❌ 找不到 MINIMAX_CN_API_KEY —— 设 env 或写进 $HERMES_HOME/.env")
+        sys.exit("❌ 找不到 MINIMAX_CN_API_KEY —— 设 env 或写进 $AGENT_HOME/.env")
 
     items = json.loads(pathlib.Path(a.script).read_text())
     out = pathlib.Path(a.out_dir)

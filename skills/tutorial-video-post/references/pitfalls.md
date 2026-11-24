@@ -445,10 +445,12 @@ python frames_xxx_dyn.py --kind intro --frames {需要帧数} --out {路径}
 
 ## G 组 —— 脚本工程
 
-### G1. 🚨 HERMES_HOME 不能重复拼 `.hermes`
+### G1. 🚨 运行时根目录不能重复拼层级
 **症状**：`ModuleNotFoundError: No module named 'subtitle'`。
-**根因**：`HERMES_HOME` **已经是** .hermes 根目录，再拼一层 → `.hermes/.hermes/skills/...`。  # leak-ok
-**解法**：`HERMES_HOME` 存在时直接用它当根，否则用家目录下的 `.hermes`；拼完 `if not SK.exists(): sys.exit(带修法的提示)`。
+**根因**：拿到的根目录**已经是** skill 根，再拼一层 `skills/<name>` → 路径多了一层。
+**解法**：优先用显式环境变量（`TUTORIAL_SKILL_HOME`）；否则从脚本自身位置上溯定位；
+拼完 `if not SK.exists(): sys.exit(带修法的提示)`。
+**⚠ 框架无关的做法**：不要假设根目录名是某个特定框架的目录 —— 用 `agentenv.skill_root()`。
 
 ### G2. 🚨 openai-whisper 本机没装
 **症状**：`ModuleNotFoundError: No module named 'whisper'`。
@@ -458,8 +460,9 @@ python frames_xxx_dyn.py --kind intro --frames {需要帧数} --out {路径}
 ### G3. 🚨 生产脚本里的绝对路径 → 脱敏扫描器 BLOCK
 **症状**：`❌ [BLOCK] 本机路径 build_ep2.py:29`。
 **根因**：脚本硬编码了 skill 路径。
-**解法**：走环境变量 + fallback（`HERMES_HOME` 当根，或家目录下的 `.hermes`），再用 `TUTORIAL_SKILL_SCRIPTS` 覆盖。
-**⚠ 顺带好处**：换机也能跑。
+**解法**：走环境变量 + fallback（`TUTORIAL_SKILL_HOME` → 脚本位置上溯 → `$AGENT_HOME/skills/<name>`），
+再用 `TUTORIAL_SKILL_SCRIPTS` 覆盖。
+**⚠ 顺带好处**：换机、换框架也能跑。
 
 ### G4. 🚨 扫描器分不清"生产脚本"和"发布内容"
 **症状**：整目录扫描，生产脚本里的路径/注释被判 BLOCK，但这些**根本不会出现在视频里**。
@@ -520,6 +523,26 @@ BLOCK_PATTERNS = [
 ```
 ⚠ **文档里的教学性反例也要逐行豁免**（如"要防 `~/.hermes/skills/...`"这类举例）。  # leak-ok
 实测：31 处 → 3 处 → **0**。
+
+🚨 **豁免标记必须紧跟在规则所在的物理行末尾。**
+把一条规则拆成多行字符串拼接时：
+```python
+# ❌ 标记在最后一行, 但前几行仍含敏感形态 → 仍被扫到
+(r"/Users/[a-z]+|/Volumes/[a-z]+|"
+ r"/workspace/|~/\.[a-z]+/", "本机路径"),  # leak-ok
+```
+→ 命中的是**第一行**（没有标记），自我 BLOCK 依然存在。
+
+✅ **根治办法：把形态拆成不含完整形态的片段再拼**：
+```python
+_PATH_RE = (
+    r"/Us" r"ers/[a-zA-Z0-9._-]+"      # 每段单看都匹配不上路径规则
+    r"|/Vol" r"umes/[A-Za-z0-9._-]+"
+    r"|/work" r"space/"
+)
+BLOCK_PATTERNS = [(_PATH_RE, "本机路径")]  # 规则行里没有任何敏感形态
+```
+→ 自我 BLOCK 从根上消失，不用靠豁免撑着。
 
 ⚠ **用一个独立的外部检查器交叉验证** —— 同实现可能有同盲区。
 ⚠ 顺手扫**别的** skill：本次扫 `real-app-tutorial-video` 发现 6 处原有 BLOCK

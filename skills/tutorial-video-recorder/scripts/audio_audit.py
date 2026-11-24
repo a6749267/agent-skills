@@ -18,8 +18,8 @@
     ⑥ 帧间隔完整性 —— 全部恒为 1/fps
 
 依赖: numpy + torch + transformers (AST) + faster_whisper + pypinyin
-⚠ faster_whisper / pypinyin 只在 Hermes 自带 venv 里:
-    $HERMES_PYTHON
+⚠ 这些重依赖常装在某个特定解释器/venv 里, 不一定是默认 python3。
+   用 $TUTORIAL_PYTHON 指定, 或让脚本自己探测。
 """
 import difflib
 import os

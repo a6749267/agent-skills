@@ -32,8 +32,8 @@ description: >
 |---|---|
 | 验收跑了另一个脚本，不是成片 | 用户看完直接判「你那张只是首页介绍页面，没登录进去」 |
 | 新账号天然是空的 | 10 个模块 6 个显示「暂无」，像空壳 |
-| 后端把汇总字段硬编码 0 | 同一画面顶栏 +0.00、明细 −1424.00，一眼看穿 |
-| 数字靠模型读 | 模型把 −1424.00 读成 −1624.00，还自己算出「总数不一致」去质疑对的数据 |
+| 后端把汇总字段硬编码 0 | 同一画面顶栏 +0.00、明细 −1200.00，一眼看穿 |
+| 数字靠模型读 | 模型把 −1200.00 读成 −1400.00，还自己算出「总数不一致」去质疑对的数据 |
 
 这份 skill 就是把这些坑固化成代码和检查项。**完整清单见 `references/pitfalls.md`（分 A–H 八组，按症状索引）**。
 
@@ -218,7 +218,7 @@ python scripts/verify.py --config project.json --video 成片.mp4 --amplify
 ```bash
 python scripts/read_numbers.py --video out/final.mp4 --times 12,22,32 \
     --crop 250,0,800,60 --crop 250,120,900,400 \
-    --expect -1652.90 --expect 1020518.26
+    --expect -1400.00 --expect 1020000.00
 ```
 ⚠ **两种读法都要做**（整帧放大 + 区域裁剪）—— Vision 的行聚类对输入布局敏感，
 整帧能读出的数裁成细条可能读不出，反之亦然。**数字取并集。**
@@ -559,13 +559,52 @@ EP3 拼接 = 连续序列拼接 · EP4 六项体检 = 可信度工程 · EP5 因
 1. **文档里写的检查命令本身会被判 BLOCK** —— 把绝对路径抄进「发布前必跑」→
    `check_leak.py` 扫这份文档报 3 处 BLOCK、退出码 1，**但不在文案正文里**。
    → 文档里写**占位命令**（`check_leak.py <本目录> --quiet`），**对外文档和工作稿一样要脱敏**。
-2. **`~` 在 agent 环境里展开成 agent 的 home，不是真 home** —— `~/.hermes/skills/...`  # leak-ok
-   → `<agent_home>/.hermes/skills/...`（文件不存在）。  # leak-ok
-   → **调用 skill 里的脚本一律用绝对路径**，别用 `~` 展开。（pitfalls E1 的变体，E1 讲 `.env`/`$HOME`，这条讲脚本路径。）
+2. **`~` 在 agent 环境里展开成沙箱 home，不是真 home** —— `~/.<agent-dir>/skills/...`
+   → 指向一个**不存在的目录**。
+   → **调用 skill 里的脚本一律用绝对路径**，别用 `~` 展开。（pitfalls E1 的变体，E1 讲凭据文件/`$HOME`，这条讲脚本路径。）
 
 完整方法（文案三件套 / 简介骨架 / 章节时间戳推导脚本 / 平台门槛一手取证 /
 三条路 + 我的判断 / 回复形状 / 反面模式）
 → **repo 的 `docs/publishing-and-platform-gating.md`**。
+
+---
+
+## 跨框架适配
+
+这套管线**不绑定任何 agent 框架**。所有与运行时环境相关的解析集中在
+`scripts/agentenv.py`，靠**优先级链**逐个尝试。
+
+| 环境变量 | 作用 | 回退 |
+|---|---|---|
+| `TUTORIAL_PYTHON` | 跑管线的解释器 | `$PY` → agent home 下的 venv → `python3` |
+| `TUTORIAL_ENV_FILE` | 凭据文件 | `$AGENT_HOME/.env` → `~/.env` |
+| `AGENT_HOME` | agent 运行时根目录 | — |
+| `TUTORIAL_SKILL_HOME` | skill 根目录 | 脚本自身位置上溯两级 |
+
+🚨 **别用 `Path.home()`** —— agent 沙箱常把 `$HOME` 劫持成自己的沙箱家目录，
+真正的家目录和凭据文件在别处 → 静默拿不到 key，不报错，最难查。
+`agentenv.real_home()` 用 `pwd.getpwuid()` 直接问操作系统要，不受 `$HOME` 影响。
+
+🚨 **完整 chromium 和 headless_shell 是两回事** —— `record_video` 的 screencast
+在 headless_shell 上不支持。`find_chromium()` 显式排除 headless_shell 目录。
+
+---
+
+## 🚨 改完管线必须跑自检
+
+```bash
+python scripts/selfcheck.py --verbose
+```
+
+**为什么必须有这个**：这套管线的错误**不抛异常**，而是变成画面里
+「顶栏汇总 ≠ 明细之和」这种看起来还挺像回事的假数据。
+肉眼发现不了，观众一眼看穿。
+
+自检覆盖 13 项：路径解析、解释器探测、凭据查找、合成守卫、hex 颜色守卫、
+**adapter 汇总自洽性**（明细之和 == fix_summary 算出的 total_amount）、
+单价反解精度、route 命中判定、报价确定性、领域配置完整性、模板合法性、扫描器可运行。
+
+`install.sh` 跑完依赖检查会自动跑一遍。
 
 ---
 
@@ -627,7 +666,7 @@ work/
 | 画面闷 / 观众划走 | 死画面，没做视觉层 | pitfalls G 组 / pacing-and-visual-spec.md |
 | 灌第二个策略 UniqueViolation | 唯一约束不分策略 | pitfalls C1 |
 | 拿不到 TTS key | `Path.home()` 被劫持 | pitfalls E1 |
-| **调用 skill 脚本报文件不存在** | **`~` 展开成 Hermes home, 脚本要用绝对路径** | **publishing §5.2** |
+| **调用 skill 脚本报文件不存在** | **`~` 展开成沙箱 home, 脚本要用绝对路径** | **publishing §5.2** |
 | **发布后「流量受影响」/ 被判财经金融专业领域** | **视频形态在财经领域被卡, 认证是死路** | **publishing §4** |
 | **章节时间戳靠估, 观众按它跳就跳错** | **要从 timeline.json 推导** | **publishing §2** |
 | **工作稿自己被判 BLOCK / 退出码 1** | **文档里写了本机路径, 要用占位命令** | **publishing §5.1** |
