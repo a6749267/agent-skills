@@ -55,18 +55,18 @@ class Adapter:
         self.months = [1, 5, 10]
 
     # ── 合成数据 ────────────────────────────────────────────────
-    def symbols(self):
+    def codes(self):
         out = []
         for i, p in enumerate(self.items):
             for m in self.months:
                 out.append(f"{p['code'].lower()}{self.scfg.year:02d}{m:02d}")
         return out
 
-    def quotes(self, symbols=None):
-        """确定性生成数据。**同一 symbol 永远给同一个值** —— 否则录屏前后不一致。"""
-        symbols = symbols or self.symbols()
+    def quotes(self, codes=None):
+        """确定性生成数据。**同一 code 永远给同一个值** —— 否则录屏前后不一致。"""
+        codes = codes or self.codes()
         out = []
-        for s in symbols:
+        for s in codes:
             rr = synthetic.stable_hash(s)
             base = 100 + (rr % 900)
             drift = ((rr // 7) % 100 - 50) / 100.0
@@ -75,7 +75,7 @@ class Adapter:
             chg = round(last - prev, 2)
             pct = round(chg / prev * 100, 2) if prev else 0.0
             out.append({
-                "symbol": s,
+                "code": s,
                 "unit_price": last,
                 "change": chg,
                 "change_pct": pct,
@@ -91,8 +91,8 @@ class Adapter:
             })
         return out
 
-    def quote_map(self, symbols=None):
-        return {q["symbol"]: q for q in self.quotes(symbols)}
+    def quote_map(self, codes=None):
+        return {q["code"]: q for q in self.quotes(codes)}
 
     # ── L2: 数据接口整体替换 ────────────────────────────────────
     def route(self, url):
@@ -116,7 +116,7 @@ class Adapter:
         for p in self.items:
             for m in self.months:
                 items.append({
-                    "symbol": f"{p['code'].lower()}{self.scfg.year:02d}{m:02d}",
+                    "code": f"{p['code'].lower()}{self.scfg.year:02d}{m:02d}",
                     "name": f"{p['name']}{m:02d}",
                     "item_code": p["code"],
                     "warehouse": "合成仓库A",
@@ -183,15 +183,15 @@ class Adapter:
         """
         qm = self.quote_map()
         spec = [
-            # symbol,      side,    qty, 目标净额
+            # code,        side,    qty, 目标净额
             ("qa2701", "sell", 2, 1200.00),
             ("qc2701", "buy",  1, -1260.40),
             ("qe2701", "sell", 3, 1490.30),
         ]
         out = []
-        for sym, side, qty, target in spec:
+        for cd, side, qty, target in spec:
             sign = 1.0 if side == "sell" else -1.0
-            last = float(qm[sym]["unit_price"])
+            last = float(qm[cd]["unit_price"])
             # 反解: sign × unit × qty == target  →  unit = target / (sign × qty)
             unit = target / (sign * qty)
             # 让单价贴近真实报价(否则会出现离谱单价, 画面假)
@@ -200,6 +200,6 @@ class Adapter:
             unit = round(unit, 2)
             if unit <= 0:
                 unit = round(last, 2)
-            out.append({"symbol": sym, "side": side, "quantity": qty,
+            out.append({"code": cd, "side": side, "quantity": qty,
                         "unit_price": unit})
         return out

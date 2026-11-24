@@ -1,0 +1,45 @@
+name: Bug report
+description: Something in the pipeline produced a wrong or broken result
+labels: bug
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you observe, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: symptom
+    attributes:
+      label: Symptom keywords
+      description: >
+        Which pitfall does this match? Copy the wording from
+        references/pitfalls.md if you can find it.
+    validations:
+      required: false
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: >
+        The smallest config / adapter snippet that reproduces it. Redact any
+        real data — never paste production values into an issue.
+    validations:
+      required: false
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: >
+        OS, Python version, agent framework and version, ffmpeg version.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-flight
+      options:
+        - label: I ran `selfcheck.py` and it passed
+        - label: I ran `scan_leak.py` on my output
+        - label: I checked that my adapter has no app-specific values hardcoded

@@ -1,0 +1,38 @@
+name: Adapter for my app
+description: Contribute an adapter that wires the recorder to your app
+labels: adapter
+body:
+  - type: input
+    id: app
+    attributes:
+      label: App name and tech stack
+      placeholder: "Acme CRM — React + FastAPI"
+    validations:
+      required: true
+  - type: textarea
+    id: apis
+    attributes:
+      label: API endpoints your adapter intercepts
+      description: >
+        Which paths are replaced wholesale (L2) and which are passed through
+        with field-level cleaning (L3)?
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary fields you recompute
+      description: >
+        If your app has a header total, say which fields `fix_summary()`
+        recomputes and where the numbers come from.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-flight
+      options:
+        - label: selfcheck.py passes
+        - label: leak scan is clean
+        - label: no real data in the adapter, fixtures, or screenshots
+        - label: I ran the recorder against my app and the summary matches the table

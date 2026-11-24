@@ -135,7 +135,7 @@ def _t_adapter_reverse():
         sign = 1.0 if o.get("side") == "sell" else -1.0
         net = sign * float(o["unit_price"]) * float(o["quantity"])
         assert abs(net - target) < 0.02, (
-            f"{o['symbol']} 净额 {round(net,2)} != 目标 {target}")
+            f"{o['code']} 净额 {round(net,2)} != 目标 {target}")
     return "三笔净额全部精确命中"
 
 
@@ -149,7 +149,7 @@ def _t_adapter_route():
     return "命中/放行判定正确"
 
 
-@check("adapter: 合成响应结构稳定(同一 symbol 永远同价)")
+@check("adapter: 合成响应结构稳定(同一 code 永远同价)")
 def _t_adapter_determinism():
     a = _load_adapter()
     q1 = a.quotes()

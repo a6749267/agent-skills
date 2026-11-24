@@ -20,6 +20,10 @@ leak_patterns.local.json
 .env
 project.local.json
 
+# demo 运行时产物(保留 demo.gif 和 screenshot.png)
+demo/.work/
+demo/frames/
+
 # 编辑器
 .DS_Store
 .idea/

@@ -150,11 +150,11 @@ def main():
         # ── 明细 ──
         if records:
             cols = [c for c in (F.get("record_cols") or
-                    ["symbol", "direction", "quantity", "avg_price"]) if c]
+                    ["code", "direction", "quantity", "unit_price"]) if c]
             ph = ",".join(["%s"] * (len(cols) + 5))
             for rec in records:
                 vals = [account_id, str(user_id)] + [rec.get(c) for c in cols] + [0, "now()", "now()"]
-                run_sql(f"明细 {rec.get('symbol')}",
+                run_sql(f"明细 {rec.get('code')}",
                         f"""insert into {T_REC}
                            (account_id, user_id, {", ".join(cols)},
                             "offset", created_at, updated_at)
@@ -164,12 +164,12 @@ def main():
         # ── 订单 ──
         if T_ORD and orders:
             cols = [c for c in (F.get("order_cols") or
-                    ["symbol", "side", "quantity", "price"]) if c]
+                    ["code", "side", "quantity", "price"]) if c]
             ph = ",".join(["%s"] * (len(cols) + 3))
             for o in orders:
                 vals = [account_id, str(user_id)] + [o.get(c) for c in cols] + \
                        [o.get("status", "filled"), "now()", "now()"]
-                run_sql(f"订单 {o.get('symbol')}/{o.get('side')}",
+                run_sql(f"订单 {o.get('code')}/{o.get('side')}",
                         f"""insert into {T_ORD}
                            (account_id, user_id, {", ".join(cols)},
                             status, created_at, updated_at)
@@ -178,11 +178,11 @@ def main():
 
         # ── 清单 ──
         if T_LST and listing:
-            cols = [c for c in (F.get("list_cols") or ["symbol", "name"]) if c]
+            cols = [c for c in (F.get("list_cols") or ["code", "name"]) if c]
             ph = ",".join(["%s"] * (len(cols) + 2))
             for it in listing:
                 vals = [str(user_id)] + [it.get(c) for c in cols] + [0, "now()"]
-                run_sql(f"清单 {it.get('symbol')}",
+                run_sql(f"清单 {it.get('code')}",
                         f"""insert into {T_LST}
                            (user_id, {", ".join(cols)}, sort_order, created_at)
                            values ({ph})""",

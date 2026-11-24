@@ -1,165 +1,205 @@
-# Agent 技能集
+<div align="center">
 
-一套**框架无关、可安装可移植**的 agent skill。每个 skill 一个目录、一份 `SKILL.md`、一个自检入口。
+# agent-skills
 
-**当前收录**
+**Framework-agnostic agent skills that ship real work.**
 
-| skill | 干什么 | 交付 |
-|---|---|---|
-| [`tutorial-video-recorder`](skills/tutorial-video-recorder/) | 录屏 → 合成 → 无声底版 | `silent.mp4` |
-| [`tutorial-video-post`](skills/tutorial-video-post/) | 字幕 → 配乐 → 验收 → 脱敏 | `final.mp4` |
+Record a tutorial video of a **real running web app** — with **zero real data** on screen.
+One config file + one adapter to plug in any app.
 
-**框架无关**：所有 skill 都是标准 `SKILL.md` 目录结构，任何支持 skill 目录的 agent 框架都能直接用（Claude Code / Cursor / OpenClaw / Hermes / …），不绑定任何一家。运行时路径靠环境变量 + 优先级链解析，不硬编码任何框架的目录。
+[![skills.sh](https://skills.sh/b/a6749267/agent-skills)](https://skills.sh/a6749267/agent-skills)
+![License: MIT](https://img.shields.io/badge/License-MIT-00e5ff.svg)
+![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)
+![Framework](https://img.shields.io/badge/framework-agnostic-00e5ff.svg)
+
+[English](README.md) · [中文](README.zh-CN.md) · [Install](#install) · [Why](#why-this-is-hard) · [Skills](#skills)
+
+</div>
+
+
+<div align="center">
+  <img src="demo/demo.gif" width="820" alt="Synthetic dashboard demo — every number is generated, and the header total always equals the sum of the line items">
+</div>
 
 ---
 
-## 收录的第一个 skill：录屏教学视频管线
+## The problem
 
-把一个**真实运行的 web 应用**录成教程视频，同时保证画面里没有一个真实数据。
+You want a tutorial video of your app. So you open Playwright and hit record.
 
-**通用管线**：换 app 只需改一份配置 + 写一个 adapter，通用层一个字都不用动。
+Ten minutes later you have 4 minutes of video with **your production data on screen** —
+real customer names, real order numbers, real account balances. And your "totals don't
+match the line items" bug is baked into the frame.
+
+Most tools solve one of these:
+
+| Tool | Records? | De-identifies? |
+|---|---|---|
+| Playwright `record_video` | ✅ | ❌ |
+| Loom / screen recorders | ✅ | ❌ |
+| Post-hoc blur / mosaic | — | ⚠️ partial, and it's manual |
+
+**This repo is the missing third thing: record *and* de-identify, in the same pass,
+with the guarantee that the numbers on screen are still self-consistent.**
+
+---
+
+## Why this is hard
+
+Naive de-identification breaks your video. Three things go wrong, and all three are
+silent — no exception, no crash, just a wrong-looking frame:
+
+**1. The frontend renders a total that doesn't equal the sum of its line items.**
+Real backends often hardcode the summary field to `0` while the frontend recomputes it
+from the line items. Now your video shows `+0.00` in the header and `−1200.00` in the
+table. Every number is "real-looking", and a viewer spots the contradiction in two seconds.
+
+**2. A vision model reads your numbers wrong — and then argues with you.**
+At thumbnail resolution, a model reads `−1200.00` as `−1400.00`, computes
+"three lines sum to −1600, the header says −1400, these don't match" — and questions
+*correct* data. A **false inconsistency is more expensive than a real one**, because it
+sends you off to "fix" something that was never broken.
+
+**3. The real value is still in the JavaScript bundle.**
+DOM scrubbing can't reach a hardcoded string inside `app.js`. It renders on screen.
+
+**This repo handles all three by construction:**
+
+- **L1 / L2 / L3 interception** — scrub the JS bundle, replace data-API responses
+  wholesale, and recompute summary fields from the same synthetic source.
+- **Native OCR, amplified** — frames are upscaled 2× before being read, and the
+  **source formula** cross-checks the OCR reading. Numbers are verified twice,
+  by two independent paths.
+- **Full-frame OCR sweep** — every frame at 2fps, not a sample. A leak at second 7
+  doesn't show up in a spot check.
+
+📖 All 40+ pitfalls, indexed by symptom: [`references/pitfalls.md`](skills/tutorial-video-recorder/references/pitfalls.md)
+
+---
+
+## What's in the box
 
 ```
-真实 web app
-   │  ① Playwright 真录屏（完整 Chromium + 真前端 + 真路由）
-   │  ② 三层拦截（L1 bundle 字面量 / L2 数据接口 / L3 业务接口）
-   │  ③ 合成数据（你的领域词表在 assets/domains/）
-   ▼
-silent.mp4（画面+旁白，无字幕无音乐）
-   │  ④ 字幕烧录  ⑤ BGM 下载/识别/选段/混音  ⑥ 成片验收  ⑦ 交付脱敏
-   ▼
-final.mp4（可直接发）
+agent-skills/
+├── skills/
+│   ├── tutorial-video-recorder/   # record → synthesize → silent.mp4
+│   └── tutorial-video-post/       # subtitles → BGM → verify → de-identify
+├── docs/                           # methodology & release checklist
+├── demo/                           # a runnable synthetic dashboard
+└── skills.sh.json                  # Skills Hub grouping
 ```
 
----
-
-## 两个 skill 的分工
-
-| skill | 干什么 | 交付 |
+| Skill | What it does | Output |
 |---|---|---|
-| [`tutorial-video-recorder`](skills/tutorial-video-recorder/) | 录屏 → 合成 → 无声底版 | `silent.mp4` |
-| [`tutorial-video-post`](skills/tutorial-video-post/) | 字幕 → 配乐 → 验收 → 脱敏 | `final.mp4` |
+| [`tutorial-video-recorder`](skills/tutorial-video-recorder/) | Record a real app, replace all data with synthetic, guarantee summary == sum of details | `silent.mp4` |
+| [`tutorial-video-post`](skills/tutorial-video-post/) | Burn subtitles, pick and mix BGM, verify audio, sweep for leaks | `final.mp4` |
 
-配套方法论在 [`docs/`](docs/)：
-- [系列规划](docs/series-planning.md) —— 排期、选题、脱敏铁律
-- [发布门槛](docs/publishing-and-platform-gating.md) —— 标题/简介怎么写，受限领域怎么绕
-
----
-
-## 这套东西解决什么问题
-
-「录个教程视频」听起来简单，实际踩了 40+ 个坑，其中 4 个是致命的：
-
-| 致命坑 | 后果 |
-|---|---|
-| 验收跑了另一个脚本，不是成片 | 用户看完直接判「你那张只是首页介绍页面，没登录进去」 |
-| 新账号天然是空的 | 10 个模块 6 个显示「暂无」，像空壳 |
-| 后端把汇总字段硬编码 0 | 同一画面顶栏 +0.00、明细 −1200.00，一眼看穿 |
-| 数字靠模型读 | 模型把 −1200.00 读成 −1400.00，还自己算出「总数不一致」去质疑对的数据 |
-
-完整清单见 [`skills/tutorial-video-recorder/references/pitfalls.md`](skills/tutorial-video-recorder/references/pitfalls.md)（分 A–H 八组，按症状索引）。
+**Framework-agnostic.** Standard `SKILL.md` directory layout — works with Claude Code,
+Cursor, Codex, Copilot, Windsurf, Gemini CLI, OpenClaw, Hermes, and anything else that
+reads a skill directory. Runtime paths resolve through an environment-variable priority
+chain; nothing hardcodes one framework's layout.
 
 ---
 
-## 快速开始
-
-### 1. 装
-
-**通用方式**（任何 agent 框架）：把 `skills/` 下的目录复制到你框架的 skill 目录，或直接用脚本（不装 skill 也能跑）。
+## Install
 
 ```bash
-# 复制到你的框架的 skill 目录
+# one command, all skills
+npx skills add a6749267/agent-skills
+```
+
+Or copy a skill directory into your agent's skills folder:
+
+```bash
 cp -r skills/tutorial-video-recorder  <your-agent-skills-dir>/tutorial-video-recorder
 cp -r skills/tutorial-video-post      <your-agent-skills-dir>/tutorial-video-post
 ```
 
-如果你用的框架支持从 git 仓库拉取 skill 目录，直接指到本 repo 即可。
+**Requirements:** `ffmpeg` + `playwright` (`pip install playwright && playwright install chromium`).
+Model-based scoring (AST/CLAP) additionally needs `torch transformers numpy`.
 
-依赖：`ffmpeg` + `playwright`（`pip install playwright && playwright install chromium`）。
-模型识别（AST/CLAP）另需 `torch transformers numpy`。
-
-自检依赖是否齐全：
+Self-check your install:
 
 ```bash
 bash skills/tutorial-video-recorder/scripts/install.sh
-```
-
-`install.sh` 跑完依赖检查后会**自动跑一遍管线自检**（13 项）——
-因为这套管线的错误**不会抛异常**，而是变成画面里「顶栏汇总 ≠ 明细之和」
-这种看起来还挺像回事的假数据。肉眼发现不了，观众一眼看穿。
-
-```bash
 python skills/tutorial-video-recorder/scripts/selfcheck.py --verbose
 ```
 
-### 2. 配
+The self-check runs 13 assertions. This matters more than it sounds: **this pipeline's
+failures don't raise exceptions** — they turn into "header total ≠ sum of line items",
+which looks like plausible data. Eyeballs don't catch it. Your audience does, instantly.
+
+---
+
+## Quick start
+
+### 1. Configure
 
 ```bash
 cp skills/tutorial-video-recorder/assets/templates/project.json ./project.json
 cp skills/tutorial-video-recorder/assets/templates/script.json    ./script.json
 ```
 
-三处要改：
+Three things to change:
 
-| 改哪 | 怎么改 |
+| Where | What |
 |---|---|
-| `project.json` → `app` | 你的 app 地址、登录信息、每段路由与旁白 |
-| `project.json` → `domain` | 你的领域配置名（见下） |
-| `project.json` → `business_paths` | 你 app 的业务接口路径（支持通配 `/api/*/orders`） |
+| `project.json` → `app` | your app URL, login, and one entry per narrated segment |
+| `project.json` → `domain` | which domain config describes your app's data |
+| `project.json` → `business_paths` | your app's business API paths (fnmatch wildcards supported) |
 
-### 3. 写你的领域配置
+### 2. Describe your data
 
 ```bash
 cp skills/tutorial-video-recorder/assets/domains/generic.json my_domain.json
 ```
 
-填三样东西：
-
 ```json
 {
-  "real_code_prefixes": ["sku", "ord"],          // 你的 app 里真实存在的短前缀
-  "real_display_names": ["商品名甲", "客户乙"],     // 真实对象名
-  "org_map": {"你的机构名": "合成机构A"},           // 机构名映射
+  "real_code_prefixes": ["sku", "ord"],
+  "real_display_names": ["Widget Alpha", "Customer Beta"],
+  "org_map": { "Acme Corp": "Synthetic Org A" },
   "id_shape": { "pattern": "^[0-9]{4}$", "prefix_len": 2, "year_digit": "2", "seq_min": 1, "seq_max": 12 }
 }
 ```
 
-> 🚨 **判定的权威永远是「你的 app 真实存在什么」**，不是任何通用词表。
+> The authority on what counts as "real" is **what your app actually contains** —
+> never a generic wordlist shipped with the tool.
 
-### 4. 写 adapter
+### 3. Write an adapter
 
 ```bash
 cp -r skills/tutorial-video-recorder/scripts/adapters/ecommerce_demo \
       scripts/adapters/my_app
 ```
 
-只需实现两个方法（详见 [`references/adapter-guide.md`](skills/tutorial-video-recorder/references/adapter-guide.md)）：
+Two methods:
 
 ```python
 class Adapter:
     def route(self, url):
-        """返回 (status, body) 替换这个响应; None = 不管"""
+        """Return (status, body) to replace this response; None = pass through."""
         if url.split("?")[0].endswith("/api/market/quotes"):
             return 200, self._shape_quotes(self.quotes())
         return None
 
     def fix_summary(self, url, payload, scfg):
-        """修「顶栏汇总 ≠ 明细之和」; 不需要就原样返回"""
+        """Recompute the header total from the same data the table uses."""
         return payload
 ```
 
-**结构必须和真响应一模一样** —— 一个字段对不上，前端就渲染成「暂无」空态。
+**Structure must match the real response exactly.** One mismatched field and your
+frontend renders an empty state instead of your data.
 
-### 5. 跑
+### 4. Run
 
 ```bash
 SKILL=skills/tutorial-video-recorder
-python $SKILL/scripts/tts.py      --script script.json --out-dir work/audio
 python $SKILL/scripts/recorder.py --config project.json
 python $SKILL/scripts/compose.py  --config project.json
 ```
 
-拿到 `silent.mp4` 后走后期：
+Then post-process:
 
 ```bash
 POST=skills/tutorial-video-post
@@ -173,114 +213,126 @@ python $POST/scripts/scan_leak.py final.mp4 --ocr --transcribe
 
 ---
 
-## 设计要点
+## Design notes
 
-### 三层拦截（为什么一层都不够）
+### Three interception layers — one is never enough
 
-| 层 | 处理什么 | 只做这层的后果 |
+| Layer | Handles | If you only did this |
 |---|---|---|
-| **L1** JS bundle | 前端代码里**硬编码**的真实字面量 | bundle 里的真编号照样上屏（DOM 洗不掉） |
-| **L2** 数据类 API | 整个响应替换成合成 payload | 真实价格/数量/明细全泄漏 |
-| **L3** 业务类 API | 放行真后端 + 字段级清洗 + 汇总重算 | 真账户上屏；顶栏和明细自相矛盾 |
+| **L1** JS bundle | real literals hardcoded in the frontend | real IDs still appear on screen (DOM scrub can't reach them) |
+| **L2** data APIs | replaces the whole response with synthetic payload | real prices/quantities/details all leak |
+| **L3** business APIs | passes the real backend through, scrubs fields, recomputes summaries | real account on screen; header contradicts its own table |
 
-### 通用层不含任何 app 假设
+### No app assumptions in the generic layer
 
-app 相关的路径、缓存键、领域词表**全在配置里**：
+Every app-specific path, cache key, and domain wordlist lives in config:
 
-| 东西 | 在哪 |
+| Thing | Where |
 |---|---|
-| 业务接口路径 | `project.json` → `business_paths`（支持 fnmatch 通配） |
-| 前端缓存键 | `project.json` → `storage_keys_block` |
-| 领域词表 | `assets/domains/<name>.json` |
-| 编号形状 | `assets/domains/<name>.json` → `id_shape` |
-| 演示数据 | `project.json` → `db.demo` |
-| 表名/字段名 | `project.json` → `db.schema` |
+| Business API paths | `project.json` → `business_paths` (fnmatch wildcards) |
+| Frontend cache keys | `project.json` → `storage_keys_block` |
+| Domain wordlists | `assets/domains/<name>.json` |
+| ID shape | `assets/domains/<name>.json` → `id_shape` |
+| Table/column names | `project.json` → `db.schema` |
 
-### 几个不显然但重要的点
+### The non-obvious bits
 
-- **必须用完整 Chromium**，不能用 `headless_shell` —— 后者不支持 `record_video` 的 screencast
-- **每段一个独立 context** —— 段首状态干净，不会互相污染
-- **浏览器磁盘缓存会让拦截完全失效** → 加 `--disable-http-cache`
-- **拦截逻辑只能有一份**，录制和验收共用 → `interceptor.py::make_handler()`
-- **数字必须用原生 OCR 读**，不用 vision 读 —— vision 在缩略拼图上会把 −1200.00 读成 −1400.00，然后自己算出「总数不一致」去质疑对的数据
-- **全片 OCR 盲扫** —— 抽查几帧不能证明「没有泄漏」，泄漏可能在第 7 秒
-- **hex 颜色守卫** —— `#ef4444` 是 CSS 颜色不是编号，不守会把前端配色全改坏
+- **Use full Chromium**, never `headless_shell` — the latter has no screencast support.
+- **One browser context per segment** — clean state at each segment boundary.
+- **Disable the HTTP cache** — a warm cache silently defeats all interception.
+- **One interception implementation**, shared by recording and verification.
+- **Numbers must be read by native OCR, not by a vision model** — see the pitfall above.
+- **Hex colors are not IDs** — `#ef4444` is CSS red; guarding on it corrupts the UI.
 
 ---
 
-## 跨框架适配
+## Cross-framework adaptation
 
-两个 skill **不绑定任何 agent 框架**。所有与运行时环境相关的解析都集中在
-`skills/tutorial-video-recorder/scripts/agentenv.py`，靠**优先级链**逐个尝试。
+All runtime resolution is centralized in
+`skills/tutorial-video-recorder/scripts/agentenv.py`, which tries a priority chain.
 
-### 你可以设置的环境变量
-
-| 变量 | 作用 | 默认回退 |
+| Variable | Purpose | Fallback |
 |---|---|---|
-| `TUTORIAL_PYTHON` | 指定跑管线的解释器 | `$PY` → agent home 下的 venv → `python3` |
-| `TUTORIAL_ENV_FILE` | 指定凭据文件 | `$AGENT_HOME/.env` → `~/.env` |
-| `AGENT_HOME` | agent 运行时根目录 | — |
-| `TUTORIAL_SKILL_HOME` | 指定 skill 根目录 | 脚本自身位置上溯两级 |
-| `TUTORIAL_AGENT_HOME` | `AGENT_HOME` 的别名 | — |
+| `TUTORIAL_PYTHON` | interpreter that runs the pipeline | `$PY` → agent home venv → `python3` |
+| `TUTORIAL_ENV_FILE` | credentials file | `$AGENT_HOME/.env` → `~/.env` |
+| `AGENT_HOME` | agent runtime root | — |
+| `TUTORIAL_SKILL_HOME` | skill root | two levels up from the script itself |
 
-### 为什么不用 `Path.home()`
+### Why not `Path.home()`
 
-> 🚨 agent 沙箱常把 `$HOME` 劫持成自己的沙箱家目录（形如 `<something>/home`），
-> 真正的家目录和凭据文件在别处。`Path.home()` 会拿到沙箱路径 → 文件不存在 →
-> **静默拿不到 key**，不报错，最难查。
+> Agent sandboxes often hijack `$HOME` to their own sandbox home. The real home
+> directory — and the real credentials file — live elsewhere. `Path.home()` returns
+> the sandbox path → file not found → **credentials silently missing**, no error,
+> hardest possible bug to diagnose.
 
-`agentenv.real_home()` 的做法：从 PATH 上的 `python3` 真实路径**反推**家目录，
-再退回 `expanduser("~")`。
+`agentenv.real_home()` reverse-derives the real home from the resolved `python3` path
+on `PATH`, then falls back to `expanduser("~")`.
 
-### 自己装 skill 时的最小要求
+### Minimal requirement for your own skill
 
-只需要两样：
-
-1. 目录里有 `SKILL.md`（YAML frontmatter，`name` 必须与目录名一致）
-2. `scripts/` 与 `SKILL.md` 同级
+1. a `SKILL.md` with YAML frontmatter (`name` must match the directory name)
+2. a `scripts/` directory next to it
 
 ---
 
-## 依赖分层
+## Dependency tiers
 
-不同脚本要不同的包，**别假设一个 venv 全都有**：
+Different scripts need different packages — **don't assume one venv has everything**:
 
-| 脚本 | 需要 |
+| Scripts | Needs |
 |---|---|
-| `fetch_music.py` / `mix_bgm.py` / `scan_leak.py` | 标准库（+ffmpeg）**零依赖** |
+| `fetch_music.py` / `mix_bgm.py` / `scan_leak.py` | stdlib (+ ffmpeg), **zero deps** |
 | `select_segments.py` / `verify_audio.py` | numpy |
 | `subtitle_post.py` | pillow |
 | `music_identify.py` / `ast_tags.py` / `clap_score.py` | torch + transformers |
 
-模型识别（AST/CLAP）和 whisper 验收通常需要**两个不同解释器**。
-逐个试：`python -c "import transformers"` / `python -c "import faster_whisper"`。
+Model scoring (AST/CLAP) and Whisper verification usually need **two different
+interpreters**. Probe them one at a time: `python -c "import transformers"` /
+`python -c "import faster_whisper"`.
 
 ---
 
-## 脱敏
+## De-identification
 
-**发布前必跑**：
+**Run before every release:**
 
 ```bash
 python skills/tutorial-video-post/scripts/scan_leak.py publish_copy.md
 python skills/tutorial-video-post/scripts/scan_leak.py final.mp4 --ocr --transcribe
 ```
 
-退出码 0 才发。
+Exit code 0 means clean.
 
-你自己的私有词放 `assets/leak_patterns.json`（脚本**不硬编码任何人的私密身份**）：
+Your own private patterns go in `assets/leak_patterns.json` — **the tool hardcodes
+nobody's private identity**:
 
 ```json
 {
-  "block": [["你的私有项目名", "私有项目"]],
-  "warn":  [["某个易混淆的词", "自定义"]]
+  "block": [["Your Private Project", "private project"]],
+  "warn":  [["Some Lookalike", "custom"]]
 }
 ```
 
-白名单放 `leak_allow.txt`（每行一个正则，命中即放行）。
+Allowlist goes in `leak_allow.txt` (one regex per line).
+
+---
+
+## Contributing
+
+Contributions are welcome — especially **adapters for new apps**. Drop one in
+`skills/tutorial-video-recorder/scripts/adapters/<your_app>/` and open a PR.
+
+Before you push:
+
+```bash
+python skills/tutorial-video-recorder/scripts/selfcheck.py
+python skills/tutorial-video-post/scripts/scan_leak.py <your files>
+```
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ---
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).

@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  selfcheck:
+    name: pipeline self-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: byte-compile all scripts
+        run: |
+          python -m compileall -q skills demo
+        continue-on-error: false
+
+      - name: pipeline self-check (13 assertions)
+        run: |
+          python skills/tutorial-video-recorder/scripts/selfcheck.py
+
+      - name: leak scan (repo must be clean)
+        run: |
+          python skills/tutorial-video-post/scripts/scan_leak.py skills README.md README.zh-CN.md docs demo
+        continue-on-error: false
+
+  guard:
+    name: skills guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: SKILL.md frontmatter validation
+        run: |
+          python - <<'PY'
+          import pathlib, sys, re
+          bad = []
+          for p in pathlib.Path("skills").glob("*/SKILL.md"):
+              txt = p.read_text(encoding="utf-8")
+              if not txt.startswith("---"):
+                  bad.append(f"{p}: missing frontmatter"); continue
+              fm = txt.split("---", 2)[1]
+              m = re.search(r"^name:\s*(.+)$", fm, re.M)
+              if not m:
+                  bad.append(f"{p}: missing name"); continue
+              name = m.group(1).strip()
+              if name != p.parent.name:
+                  bad.append(f"{p}: name '{name}' != dir '{p.parent.name}'")
+              if "description:" not in fm:
+                  bad.append(f"{p}: missing description")
+          if bad:
+              print("\n".join(bad)); sys.exit(1)
+          print("all SKILL.md frontmatter OK")
+          PY

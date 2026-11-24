@@ -46,7 +46,7 @@ unrealized/today/subtotal/available/usage_rate。
   → `last = avg` → 差额恒 0
 - 前端要求 `direction && qty>0 && avg!=null` 才返回 `hasRecord:true`，否则 `pnl=0`
 **解法**（录制层）：拦该接口，用**前端同一套公式**补
-`record_direction/qty/avg_price/last_price/unrealized_pnl`，
+`record_direction/qty/unit_price/last_price/unrealized_pnl`，
 `last_price` 必须取**和画面渲染同一个值**。
 ⚠ 别指望灌趋势曲线能救 —— 前端根本不用它算卡片数值。
 **自检**：卡片数值应与明细逐笔差额**完全相等**。
@@ -202,27 +202,27 @@ edge = sum(1 for y in range(0,h,3) for x in range(0,w-3,3)
 用两字母 `["QA","QB",…]`。
 
 ### C3. 🚨 灌完库后查「编号前缀 ↔ 名称」对应（§32）
-**症状**：界面显示「qc2701 | 合成标的B01」，对不上。
-**解法**：索引对齐，或**从 symbol 推导名字**。
+**症状**：界面显示「qc2701 | 合成对象B01」，对不上。
+**解法**：索引对齐，或**从 code 推导名字**。
 同理流水 `flow_type` 必须用前端 `flowTypeLabel()` 认识的枚举
 （claim/freeze/unfreeze/fee/open/close/settlement），用前端不认的值 → **裸露英文**。
 **灌完库的必查项**：逐页 `inner_text` 抓 ① 裸露英文枚举 ② 编号与名称错位
 ③ 该有价格的地方是 `--`。**这三条靠截图看不出来。**
 
-### C3a. 🚨🚨 avg_price 必须和 quotes() **自洽** —— 否则比例全错而"看起来正常"
-**症状**：画面上金额是 +24800 / −29600 这种量级，比例完全失真，
+### C3a. 🚨🚨 unit_price 必须和 quotes() **自洽** —— 否则比例全错而"看起来正常"
+**症状**：画面上金额是 +2480 / −2960 这种量级，比例完全失真，
 但**每一个数字都存在、都不是 0、汇总也等于明细之和** → 检查项全过，肉眼看也像有数据。
-**根因**：`avg_price` 抄了历史值（3180/5420/4080），但 `quotes()` 生成的是另一套
-（4418/5276/3094）→ 差额 = (last−avg)×qty 自然爆炸。
-**解法**：**反解** avg_price，让差额等于你要的数：
+**根因**：`unit_price` 抄了历史值（118.40/126.40/149.03），但 `quotes()` 生成的是另一套
+（441.83/527.62/309.47）→ 差额 = (last−unit_price)×qty 自然爆炸。
+**解法**：**反解** unit_price，让差额等于你要的数：
 ```python
-last = qm[sym]["last_price"]
-avg = last - target/(qty*mult)      # long
-avg = last + target/(qty*mult)      # short
+last = qm[code]["unit_price"]
+unit = last - target/(qty*mult)      # 方向 in
+unit = last + target/(qty*mult)      # 方向 out
 ```
 **自检**：算出三笔差额后，确认**量级合理**（单笔通常在总额的千分之几到百分之几），
 别只看"有没有数字"。
-⚠ 这是「换成你自己的 app 时最容易复制错的一处」—— adapter 模板里的 avg_price
+⚠ 这是「换成你自己的 app 时最容易复制错的一处」—— adapter 模板里的 unit_price
 必须跟着 quotes() 一起改，否则给别人的示例本身就是错的。
 
 ### C4. 🚨 合成数据要**可复跑**（§6）
