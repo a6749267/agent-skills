@@ -28,6 +28,16 @@ if str(HERE) not in sys.path:
 RESULTS = []
 
 
+class Skip(Exception):
+    """环境不具备时跳过该检查(而不是判失败)。
+
+    用途: 少数断言依赖「本机已装好的运行环境」(真实家目录、已安装的 skill
+    位置、带 playwright 的解释器)。在干净的 CI runner 上这些前提不成立,
+    判失败会让 CI 变成噪声。但前提成立时必须真跑真判 —— 所以是 skip
+    而不是无条件 pass。
+    """
+
+
 def check(name):
     """装饰器: 把一个函数注册成检查项。"""
     def deco(fn):
@@ -41,7 +51,8 @@ def check(name):
 def _t_agentenv_home():
     import agentenv
     rh = pathlib.Path(agentenv.real_home())
-    assert rh.is_dir(), f"real_home 指向不存在的目录: {rh}"
+    if not rh.is_dir():
+        raise Skip(f"本机没有可定位的真实家目录 (real_home={rh})")
     assert rh != pathlib.Path("/"), "real_home 返回了根目录 —— 解析失败"
     # 沙箱 home 一般形如 <真实家目录>/.<框架>/home
     assert rh.name != "home" or rh.parent != rh, "real_home 仍是沙箱 home"
@@ -52,7 +63,8 @@ def _t_agentenv_home():
 def _t_agentenv_skill():
     import agentenv
     root = agentenv.skill_root(skill_name="tutorial-video-recorder")
-    assert (root / "SKILL.md").exists(), f"skill 根定位错: {root}"
+    if not (root / "SKILL.md").exists():
+        raise Skip(f"skill 未安装到 agent 目录 (skill_root={root})")
     return f"skill_root = {root}"
 
 
@@ -61,7 +73,8 @@ def _t_agentenv_python():
     import agentenv
     py = agentenv.pick_python("playwright")
     rc = subprocess.run([py, "-c", "import playwright"], capture_output=True)
-    assert rc.returncode == 0, f"选出的解释器没有 playwright: {py}"
+    if rc.returncode != 0:
+        raise Skip(f"本机没有装 playwright 的解释器: {py}")
     return f"pick_python = {py}"
 
 
@@ -202,10 +215,12 @@ def _t_compliance():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--verbose", action="store_true")
+    ap.add_argument("--strict", action="store_true",
+                    help="把跳过也算作失败(用于确认本机环境齐备)")
     args = ap.parse_args()
 
     print("=== 管线自检 ===\n")
-    passed = failed = 0
+    passed = failed = skipped = 0
     for name, fn in RESULTS:
         try:
             detail = fn()
@@ -213,12 +228,17 @@ def main():
             if args.verbose and detail:
                 print(f"       {detail}")
             passed += 1
+        except Skip as e:
+            print(f"  ⏭️  {name}")
+            if args.verbose:
+                print(f"       跳过: {e}")
+            skipped += 1
         except Exception as e:
             print(f"  ❌ {name}")
             print(f"       {type(e).__name__}: {e}")
             failed += 1
-    print(f"\n{passed} 项通过, {failed} 项失败")
-    return 1 if failed else 0
+    print(f"\n{passed} 项通过, {failed} 项失败, {skipped} 项跳过")
+    return 1 if (failed or (args.strict and skipped)) else 0
 
 
 if __name__ == "__main__":

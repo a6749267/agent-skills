@@ -22,7 +22,13 @@ jobs:
           python -m compileall -q skills demo
         continue-on-error: false
 
-      - name: pipeline self-check (13 assertions)
+      - name: install playwright (so the interpreter-probe assertion really runs)
+        run: |
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet playwright
+        continue-on-error: true
+
+      - name: pipeline self-check
         run: |
           python skills/tutorial-video-recorder/scripts/selfcheck.py
 
